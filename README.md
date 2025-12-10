@@ -16,8 +16,8 @@ ProtView is an interactive web-based application for visualizing and annotating 
 ### Installation
 1.  Clone the repository:
     ```bash
-    git clone https://github.com/YOUR_USERNAME/mass-spec-app.git
-    cd mass-spec-app
+    git clone https://github.com/Gaolaboratory/ProtView.git
+    cd protview
     ```
 2.  Install dependencies:
     ```bash
