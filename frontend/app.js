@@ -1,653 +1,137 @@
-const form = document.getElementById('annotation-form');
-const visualizeBtn = document.getElementById('visualize-btn');
-const exampleBtn = document.getElementById('example-btn');
-const statusMsg = document.getElementById('status-msg');
+// DOM Elements
+const readBtn = document.getElementById('read-btn');
+const mzmlPathInput = document.getElementById('mzml-path');
+const pinPathInput = document.getElementById('pin-path');
+const peptideGrid = document.getElementById('peptide-grid');
 const plotContainer = document.getElementById('plot-container');
+const statusMsg = document.getElementById('status-msg');
 
-// Example Data
-const EXAMPLE_DATA = {
-    sequence: "VLHPLEGAVVIIFK",
-    charge: 2,
-    tolerance: 0.1,
-    spectrum: `110.0711899 39316.46484
-111.0682449 319.6931458
-111.0745163 1509.026855
-111.2657471 104.0572052
-112.0869751 260.0960388
-115.0866165 118.67202
-116.4979019 110.9478302
-118.0746078 101.2495804
-118.2987518 101.2590485
-120.08078 6359.838867
-122.0713501 1284.566772
-122.6863785 95.47826385
-125.0711365 125.5641785
-126.6214905 112.6832428
-127.0863571 228.3009644
-129.1023407 6594.932129
-130.0651093 227.9772491
-130.0863495 3924.014648
-130.1059418 305.3385315
-131.1331482 125.9082108
-132.0811005 141.5992889
-136.0757904 1072.317993
-137.07901 116.7234497
-138.0663452 1404.383301
-139.6397095 105.2382584
-141.1023712 765.8214111
-143.1180267 251.5856781
-147.1129913 9094.405273
-148.1163635 378.7267761
-148.1478119 104.1157913
-149.6271057 103.6849899
-150.0661316 138.984314
-154.0614166 514.3123779
-155.0815735 543.6497192
-155.5275879 109.6485214
-156.0771637 361.8795166
-157.1338043 276.4479065
-158.0924072 242.0316162
-159.0919342 418.8405151
-164.1183014 253.6156464
-166.0610962 1123.430298
-166.9362488 117.5856247
-167.081665 204.4872284
-169.0972595 554.6865234
-169.1336517 300.2339783
-171.1130981 278.2398071
-171.1496124 275.7862549
-172.0715027 125.0297775
-173.0924377 199.8933411
-173.1286774 374.8813171
-173.3859406 101.4526978
-175.1191406 1257.250244
-178.1343231 142.4060059
-179.9889832 106.5545502
-180.0238495 114.7013092
-183.1131439 218.6261444
-183.1493378 4397.650879
-184.152771 405.3072815
-185.1649628 3312.401611
-186.0874481 238.9500275
-186.1235046 310.5552063
-186.1686707 206.1929626
-186.4963379 102.2776184
-187.0712433 116.5658188
-187.1078186 456.8995667
-198.1242828 196.6487122
-199.144516 178.6749725
-199.1807556 731.0249634
-201.0872955 227.4836578
-201.1238403 379.5022278
-204.1343994 2202.524658
-207.1607361 141.6020966
-211.1443176 3557.835938
-212.1478729 370.4300842
-212.176178 346.5093994
-213.1599274 1676.434692
-214.118866 248.6953888
-214.1633759 203.0691681
-215.102951 345.7081909
-215.1392059 394.591095
-216.0979004 354.0422668
-216.1346436 222.9430847
-223.1080627 142.5386047
-223.1554413 1118.66394
-225.1598511 113.9491806
-226.1187744 927.0436401
-227.102829 190.7360535
-227.1756744 998.5618896
-228.1342621 1051.197021
-228.1706238 376.52948
-229.1551971 320.4535522
-231.1489716 218.6694641
-233.1402283 292.5977173
-233.1648712 2131.383789
-234.1241913 1253.266113
-234.1685333 136.362381
-235.1191406 4772.292969
-235.1557159 270.509552
-236.1034088 197.5083771
-236.1235809 472.8692017
-238.118454 242.3526306
-240.1345825 337.1196899
-242.150116 232.5903015
-243.1341095 432.3115234
-245.1300507 196.09935
-247.1199036 518.6516113
-249.1601257 151.9533234
-251.150528 3603.956299
-252.1544952 267.5752869
-253.9946594 112.6115952
-256.0928345 442.8450623
-256.1445313 261.4000854
-258.1088867 772.4816895
-258.1448364 790.1484985
-259.1452942 313.4315491
-260.1965637 136.8200531
-261.1348267 190.242569
-261.1567688 1830.773926
-262.1628723 203.8782501
-263.1142578 454.329834
-265.1000061 255.2305908
-270.1812439 303.7796936
-271.1290283 123.9680481
-274.1182861 581.8991089
-275.1717224 245.811203
-276.1338501 207.9990845
-276.1559143 530.880127
-276.170929 2046.713745
-277.1557007 587.6407471
-277.17453 255.05159
-277.2027588 224.4776154
-279.0976868 311.2432251
-279.1454163 3120.305908
-280.149353 149.5193939
-282.145752 152.3462524
-282.7924194 122.4265213
-284.1026611 239.6107178
-284.1393127 857.1761475
-284.1601868 147.6378632
-286.138916 194.6282654
-287.240387 115.3909683
-288.2029419 131.9607544
-289.2028198 298.1912537
-289.7664795 132.0524292
-293.1132202 208.3813629
-294.181488 17224.49414
-295.184967 1985.118774
-297.1557922 231.3027039
-299.2082825 289.442688
-300.1555786 350.2489014
-301.1872864 2486.45459
-302.1138306 1155.885986
-302.1911316 348.2250671
-304.1632385 391.3684692
-304.2130737 300.2637634
-305.1970825 157.1546021
-306.2290955 4396.749023
-306.5655823 124.7648773
-307.1413269 132.5909882
-307.2321472 325.4115906
-310.1399841 125.9637527
-310.1765137 193.2789154
-310.2127991 334.1532288
-311.1708374 575.7974243
-311.2076111 132.745224
-312.1555176 154.3253021
-312.1748352 226.6844482
-312.1922302 567.3126221
-312.2281189 1137.140869
-313.1867065 777.8808594
-321.6863708 116.0778732
-322.0862122 820.9702759
-322.1217651 205.1555481
-322.2237549 839.2944946
-325.1890564 193.9871063
-326.1717834 362.9204102
-326.2440796 885.8695679
-327.2030334 2662.869385
-328.2066956 320.3231506
-329.1817932 622.8418579
-330.1302185 1059.118164
-330.1670532 563.6607666
-330.1928406 1630.970703
-330.6637573 109.5154343
-331.1956482 220.5326996
-332.2084961 9395.376953
-333.2116089 1060.809937
-334.172821 135.4125977
-337.1511536 137.4394836
-339.1661682 658.4216309
-339.203064 265.1839294
-340.186676 5055.846191
-341.1919861 604.913269
-341.2180481 445.6226501
-342.1312256 134.5677032
-343.1954346 132.4654083
-345.1577148 120.9301987
-345.190979 258.2611694
-347.1922302 281.7816772
-348.2052917 569.5991211
-350.2189331 43087.16797
-351.2222595 6235.75
-352.1331787 262.3873596
-352.2232971 132.6325684
-352.6895752 289.2188416
-353.1821594 173.6459198
-355.1617737 211.5697632
-357.1766968 2073.177246
-358.2088013 6572.799316
-359.2127686 763.7015381
-361.1886902 122.0812149
-362.203186 123.231636
-367.1789246 132.4701233
-368.1922607 145.4664154
-370.1862183 252.765274
-371.1928711 677.4319458
-373.1505737 749.2195435
-373.1874084 247.7788239
-374.2440796 140.2703094
-375.1764832 260.012146
-376.1982727 1138.225464
-381.2131653 238.1909027
-383.1722107 189.3490906
-383.2661133 533.578064
-393.1597595 407.3626709
-393.2185974 261.1586914
-395.2655945 289.3679504
-397.2079163 2056.178467
-398.1824646 1854.32605
-398.2107239 366.1879578
-399.1859131 444.3094788
-402.2241516 623.7005615
-403.5386658 115.5637512
-407.2653809 6313.078613
-408.1395874 126.5838242
-408.2296143 119.9287338
-408.2681274 1062.128906
-409.0220032 112.1695786
-409.1706238 127.0582886
-409.2075195 227.8921509
-409.230957 741.0212402
-409.7319641 344.2492065
-410.237915 209.8809814
-410.6464844 111.3486786
-411.2247009 201.8582306
-412.2558289 125.4573212
-412.2934265 479.327301
-413.2176208 114.0497971
-414.2357788 286.467804
-421.1538086 916.0103149
-422.1568298 212.4588165
-422.1940002 140.0387115
-422.239563 340.5820618
-423.2043152 226.4377747
-423.2269897 132.3563232
-424.1994324 129.3749084
-425.2405396 732.4388428
-425.3117676 398.0254822
-426.2392273 175.8441315
-426.8474426 124.7391586
-427.2377625 183.9859161
-428.2496338 328.2409363
-431.2362976 244.568634
-432.3002014 134.0068054
-436.2210693 121.03685
-438.2351685 825.7039795
-439.2175598 721.1669922
-439.255188 267.4046326
-440.2505493 2474.293213
-440.2863159 3030.074463
-441.253418 630.7214966
-441.2866821 503.677002
-442.2670288 563.4763184
-444.7689209 439.6401978
-446.2607727 178.8315735
-447.2709961 648.1717529
-448.2546082 221.9173737
-449.1846924 302.8166809
-449.7603149 342.3545227
-450.2344971 419.4104004
-453.2704468 364.4444275
-454.302002 429.6109009
-456.245575 2579.431396
-457.2481384 241.902298
-458.7661438 1757.554321
-459.2348328 308.6077576
-459.2673645 761.5397949
-465.1973267 207.4611664
-468.2454834 9502.103516
-469.2188721 1041.259888
-469.2484741 1698.307007
-470.137085 122.5039215
-470.2235413 234.2170563
-470.2600098 871.9168091
-471.2639771 306.8452454
-471.4693909 135.610321
-473.3125 333.9514771
-477.2459106 572.1246338
-486.2328796 132.0954742
-487.2548523 143.7416229
-490.3923645 130.9017639
-494.2037659 120.5008087
-494.2509766 142.669632
-494.3009338 252.9222412
-496.3486328 231.1627045
-498.2928772 226.8608398
-505.2780457 601.1686401
-506.2050476 204.5851746
-508.3008728 997.9510498
-508.802063 215.1253967
-511.264801 141.6831818
-511.3229065 222.7030334
-515.2705688 232.6214752
-515.744812 595.9975586
-515.8109741 116.7116089
-520.3493042 4453.481445
-521.31073 230.8691406
-521.3535767 997.4741821
-522.2929688 205.9480286
-524.3059082 727.5469971
-525.3093262 286.5023804
-525.375 319.6812439
-526.2653809 203.7844543
-527.1820068 110.1083832
-530.3300171 145.9818726
-532.3590088 591.6121216
-534.2386475 283.6160278
-534.2702026 411.5855408
-537.340332 187.8209534
-539.3188477 4442.920898
-540.3232422 776.4139404
-541.3352661 614.5036621
-542.3360596 331.2441711
-547.2171021 146.7969208
-549.3030396 916.0662842
-550.309082 149.1509552
-551.3190918 417.3681641
-553.296814 261.1588135
-553.3707886 1116.803467
-554.2467651 570.1741333
-554.3748169 214.8973846
-560.3547363 1077.043579
-561.3579102 346.4796753
-562.269043 2011.089844
-563.2737427 365.2514038
-564.246582 258.7957764
-567.3138428 16119.38574
-568.3170776 3800.300293
-569.3294067 3258.256348
-570.3338623 672.5202637
-571.269043 303.9916992
-577.3093262 239.3209839
-581.2390137 144.3493805
-581.3285522 540.954834
-583.3453979 410.2053833
-587.2931519 266.2180481
-587.3592529 221.4795837
-588.2935181 439.487915
-590.3318481 221.2322693
-593.3658447 1894.998901
-593.8676147 1095.295776
-594.3690796 134.094162
-599.2910767 576.972168
-605.3068237 545.6955566
-606.3057251 304.4070129
-611.3726196 154.7698059
-616.2884521 266.3976746
-617.2938232 145.7146606
-619.2921753 964.9862671
-619.418457 3126.732178
-620.2962646 381.761261
-620.4194336 958.3792114
-637.3927002 150.8388519
-638.3876953 3002.437744
-639.3892212 502.4930115
-648.3105469 142.6757202
-648.3717041 708.9216919
-652.4016724 231.5236359
-652.8903198 3898.085938
-653.3909912 2592.053955
-653.894104 297.7020874
-654.4176025 352.0198669
-658.3659058 230.5151978
-661.4035034 444.0852661
-661.8949585 2244.322021
-662.3979492 1040.002075
-662.895752 226.8914642
-663.3126221 277.4478455
-666.3825684 16885.51758
-667.385437 4578.271973
-668.3889771 299.2398376
-676.3782349 267.7315063
-680.3981323 2566.167236
-681.4005127 673.498291
-682.4125366 1413.663452
-683.416626 302.184906
-684.357605 149.7094269
-686.3626709 801.1749878
-686.843811 129.7652893
-687.3685913 227.841217
-689.3984985 1629.848877
-690.3591919 259.2454224
-690.4081421 520.2089844
-696.4237061 203.1794434
-704.3733521 2668.905029
-705.3769531 517.5458984
-712.3774414 511.8834839
-712.423584 184.4842987
-716.3995361 129.9256897
-718.4358521 181.4723206
-718.4856567 1391.658691
-719.4893188 396.10495
-722.8953857 133.9750824
-746.4221191 903.9532471
-747.4250488 386.3142395
-751.4713135 1325.165649
-752.4750366 494.0919495
-757.4358521 290.456665
-759.3773804 136.513382
-759.8825684 150.09552
-761.4579468 712.2362671
-767.3728638 714.8172607
-767.4279175 612.5597534
-767.8909302 461.7737427
-767.9743652 223.3906555
-768.3308105 1584.012573
-768.3968506 791.4907837
-768.4349976 209.1486816
-772.4327393 139.121933
-775.4490967 280.6684875
-779.4667969 9947.635742
-780.4701538 3505.522217
-781.4731445 287.8651733
-785.4296875 1640.204102
-786.4331665 572.6867065
-789.4626465 658.2080688
-789.5236816 529.1077881
-793.4799194 694.7182007
-795.4963989 234.3954773
-799.3546143 253.0410614
-799.4465332 300.9608154
-803.4415283 4159.55127
-804.4468994 1108.545898
-805.3883057 672.3317261
-809.2539673 131.9415436
-813.446228 229.8905792
-817.4570923 6911.20459
-818.4602051 2240.883789
-819.463623 234.2902527
-825.4613647 323.7792664
-826.4653931 251.0394897
-827.4537964 194.2391357
-829.4836426 198.7526703
-830.4853516 213.6908569
-831.3986816 149.6901398
-840.4153442 297.8675232
-845.3979492 636.8494263
-846.4034424 275.7665405
-846.5461426 2684.652832
-847.5489502 1135.412109
-864.5540771 550.8826904
-870.5216064 357.0207214
-876.4266968 360.4958801
-877.9705811 153.7785034
-878.5368652 216.1094513
-880.4431152 155.9555359
-888.5299683 1250.276123
-889.5317383 514.1308594
-892.5509033 3268.70752
-893.5534058 1423.86499
-898.5155029 2302.19751
-899.5165405 1164.964722
-902.4215088 240.7994537
-912.4938354 827.6189575
-913.5007935 352.2354126
-916.5258789 15750.58105
-917.5281982 6128.043457
-918.5332642 566.1478271
-926.5359497 365.0648499
-930.4047852 234.3999023
-957.5748901 224.4288025
-958.5881958 294.7776489
-959.4480591 428.800293
-963.4607544 593.6859131
-975.5883789 2871.6604
-976.5910645 1553.797607
-977.5927734 229.8053131
-978.5057983 152.1772461
-983.6038818 225.9931793
-987.0255127 131.8332367
-987.6001587 543.8096924
-988.6046143 411.2616272
-995.4904175 278.8078003
-996.494751 227.9986877
-997.5883179 268.2236938
-1002.484192 876.6536255
-1003.489868 336.5846252
-1011.598328 1531.889893
-1012.597473 697.5814209
-1013.542969 1090.704712
-1014.544739 554.9282837
-1015.594788 12028.34668
-1016.597656 6164.132813
-1017.595215 613.633728
-1029.609619 1635.258423
-1030.484009 988.227417
-1030.608398 562.9782104
-1031.490967 425.9089966
-1031.621704 185.2526398
-1032.481812 232.0301056
-1039.617798 711.4647827
-1040.627686 327.1423645
-1050.490112 1377.651855
-1051.497314 237.4680634
-1059.509033 322.4690857
-1060.512451 225.6759491
-1087.51123 292.0287476
-1088.506714 198.6422119
-1088.671997 2132.23877
-1089.676025 1534.876221
-1092.773926 128.7805176
-1098.659302 213.8349152
-1100.682983 455.9431458
-1101.69104 239.1746674
-1107.591675 142.5115204
-1128.678833 5089.967285
-1129.67981 2945.000488
-1130.491211 148.4880981
-1130.685303 313.8926697
-1142.685059 154.1700592
-1146.218872 132.6192169
-1149.556152 1725.078857
-1150.558594 1296.382813
-1151.56665 304.8321228
-1158.671631 338.3654175
-1160.611694 413.9454041
-1161.619385 394.3769531
-1163.578003 544.4717407
-1167.720581 311.4903564
-1168.720093 203.5318298
-1176.682251 303.4505005
-1177.55249 1103.288086
-1177.680298 312.6172791
-1178.550049 757.3369141
-1179.555542 146.1054382
-1185.725342 13304.76367
-1186.727783 7922.505371
-1187.735107 1094.840942
-1206.577148 586.6654053
-1207.578979 263.5506287
-1222.619751 164.7063141
-1231.636475 182.6505127
-1234.592041 225.4897156
-1235.574463 282.237793
-1241.768433 925.8685303
-1242.772339 531.5496826
-1288.667236 612.9485474
-1289.668457 430.1701355
-1322.793945 471.747406
-1323.79187 359.9940186
-1385.719482 799.1680908
-1386.728149 336.4416199
-1440.730347 1061.151978
-1441.729736 1138.318359`
-};
+let gridApi = null; // ag-Grid API
 
-// Example Button Handler - Define this BEFORE the form submit handler
-exampleBtn.addEventListener('click', () => {
-    document.getElementById('sequence').value = EXAMPLE_DATA.sequence;
-    document.getElementById('charge').value = EXAMPLE_DATA.charge;
-    document.getElementById('tolerance').value = EXAMPLE_DATA.tolerance;
-    document.getElementById('spectrum').value = EXAMPLE_DATA.spectrum;
-    showStatus("Example data loaded", "success");
-});
+// Event Listeners
+if (readBtn) {
+    readBtn.addEventListener('click', handleReadLocal);
+} else {
+    console.error("Read button not found");
+}
 
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+// State
+let currentData = null;
 
-    // Get values
-    const sequence = document.getElementById('sequence').value.trim();
-    const charge = parseInt(document.getElementById('charge').value);
-    const tolerance = parseFloat(document.getElementById('tolerance').value);
-    const spectrum = document.getElementById('spectrum').value;
+async function handleReadLocal() {
+    console.log("Read Local Clicked");
+    const mzmlPath = mzmlPathInput.value.trim();
+    const pinPath = pinPathInput.value.trim();
 
-    if (!sequence || !spectrum) {
-        showStatus("Please fill in all fields", "error");
+    if (!mzmlPath || !pinPath) {
+        showStatus("Please enter both mzML and .pin file paths.", "error");
         return;
     }
 
-    try {
-        setLoading(true);
-        showStatus("Processing...", "normal");
+    // Remove quotes if user copied path as string
+    const cleanMzml = mzmlPath.replace(/^"|"$/g, '');
+    const cleanPin = pinPath.replace(/^"|"$/g, '');
 
-        const response = await fetch('/api/annotate', {
+    showStatus("Reading local files...", "normal");
+    readBtn.disabled = true;
+
+    try {
+        const response = await fetch('/api/load_local', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                sequence,
-                charge,
-                tolerance,
-                spectrum
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mzml_path: cleanMzml, pin_path: cleanPin })
         });
 
         if (!response.ok) {
             const err = await response.json();
-            throw new Error(err.detail || "Failed to process data");
+            throw new Error(err.detail || "Load failed");
         }
 
         const data = await response.json();
-        renderPlot(data, sequence);
-        // updateStats(data); // Removed
-        showStatus("Success!", "success");
+        renderAgGrid(data.peptides);
+        showStatus(data.message, "success");
 
     } catch (error) {
         console.error(error);
-        showStatus(error.message, "error");
+        showStatus("Error: " + error.message, "error");
     } finally {
-        setLoading(false);
+        readBtn.disabled = false;
     }
-});
+}
 
-function setLoading(isLoading) {
-    visualizeBtn.disabled = isLoading;
-    visualizeBtn.textContent = isLoading ? "Calculating..." : "Visualize & Annotate";
-    visualizeBtn.style.opacity = isLoading ? 0.7 : 1;
+function renderAgGrid(peptides) {
+    // Clear previous grid
+    peptideGrid.innerHTML = '';
+
+    if (peptides.length === 0) {
+        peptideGrid.innerHTML = '<div class="placeholder-text">No peptides found.</div>';
+        return;
+    }
+
+    const gridOptions = {
+        rowData: peptides,
+        columnDefs: [
+            { field: 'sequence', headerName: 'Peptide', flex: 2, sortable: true },
+            { field: 'charge', headerName: 'Chg', width: 70, sortable: true },
+            { field: 'scan_nr', headerName: 'Scan', width: 80, sortable: true },
+            { field: 'spec_id', headerName: 'Spec ID', flex: 1, hide: true }
+        ],
+        defaultColDef: {
+            resizable: true,
+            sortable: true,
+            filter: true
+        },
+        rowSelection: 'single',
+        onRowClicked: (event) => {
+            loadSpectrum(event.data);
+        },
+        animateRows: false,
+        headerHeight: 30,
+        rowHeight: 30
+        // Removed 'theme: legacy' as it might be invalid
+    };
+
+    if (typeof agGrid !== 'undefined') {
+        gridApi = agGrid.createGrid(peptideGrid, gridOptions);
+    } else {
+        showStatus("Error: ag-Grid library not loaded. Check internet connection.", "error");
+    }
+}
+
+async function loadSpectrum(peptide) {
+    showStatus(`Loading Scan ${peptide.scan_nr}...`, "normal");
+
+    try {
+        // Fix encoding for sequences with brackets
+        const url = `/api/spectrum/${peptide.scan_nr}?sequence=${encodeURIComponent(peptide.sequence)}&charge=${peptide.charge}`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || "Failed to load spectrum");
+        }
+
+        const data = await response.json();
+        renderPlot(data, peptide.sequence, peptide.charge);
+        showStatus(`Loaded Scan ${peptide.scan_nr}`, "success");
+
+    } catch (error) {
+        console.error(error);
+        showStatus("Error loading spectrum: " + error.message, "error");
+    }
 }
 
 function showStatus(msg, type) {
-    statusMsg.textContent = msg;
-    if (type === "error") statusMsg.style.color = "var(--error-color)";
-    else if (type === "success") statusMsg.style.color = "var(--success-color)";
-    else statusMsg.style.color = "var(--text-secondary)";
+    if (statusMsg) {
+        statusMsg.textContent = msg;
+        if (type === "error") statusMsg.style.color = "var(--error-color)";
+        else if (type === "success") statusMsg.style.color = "var(--success-color)";
+        else statusMsg.style.color = "var(--text-secondary)";
+    }
 }
 
-function renderPlot(data, sequence) {
-    // Clear previous
+function renderPlot(data, sequence, charge) {
+    if (!plotContainer) return;
     plotContainer.innerHTML = '';
 
     const peaks = data.peaks;
@@ -657,29 +141,24 @@ function renderPlot(data, sequence) {
     const getMin = (arr) => { let m = Infinity; for (let v of arr) if (v < m) m = v; return m; };
     const getMax = (arr) => { let m = -Infinity; for (let v of arr) if (v > m) m = v; return m; };
 
-
     const xPeaks = peaks.map(p => p.mz);
     const yPeaks = peaks.map(p => p.intensity);
     const hoverTexts = peaks.map(p => `m/z: ${p.mz.toFixed(4)}<br>Int: ${p.intensity.toFixed(1)}`);
 
-
-
-    // Base trace: 'sticks'
     const minMz = getMin(xPeaks);
     const maxMz = getMax(xPeaks);
     const maxY = getMax(yPeaks);
 
-    // Uniform small width for "stick" look
     const barWidth = 0.05;
 
-    // Base trace: 'sticks'
+    // Unmatched Trace
     const tracePeaks = {
         x: xPeaks,
         y: yPeaks,
         type: 'bar',
         name: 'Peaks',
         marker: {
-            color: '#606060',
+            color: '#606060', // Gray
             line: { width: 0 }
         },
         width: barWidth,
@@ -688,11 +167,10 @@ function renderPlot(data, sequence) {
         textposition: 'none'
     };
 
-    // 2. Matched peaks (Colored)
+    const traces = [tracePeaks];
+
     const bMatches = matches.filter(m => m.ion_type.startsWith('b'));
     const yMatches = matches.filter(m => m.ion_type.startsWith('y'));
-
-    const traces = [tracePeaks];
 
     if (bMatches.length > 0) {
         traces.push({
@@ -702,9 +180,7 @@ function renderPlot(data, sequence) {
             name: 'b-ions',
             marker: { color: '#3b82f6', line: { width: 0 } },
             width: barWidth,
-            hoverinfo: 'text',
-            text: bMatches.map(m => `<b>${m.ion_type}+${m.ion_charge}</b><br>Obs: ${m.peak_mz}<br>Calc: ${m.theoretical_mz.toFixed(4)}<br>Error: ${m.error.toFixed(4)}`),
-            textposition: 'none'
+            hoverinfo: 'x+y+name'
         });
     }
 
@@ -716,62 +192,58 @@ function renderPlot(data, sequence) {
             name: 'y-ions',
             marker: { color: '#ef4444', line: { width: 0 } },
             width: barWidth,
-            hoverinfo: 'text',
-            text: yMatches.map(m => `<b>${m.ion_type}+${m.ion_charge}</b><br>Obs: ${m.peak_mz}<br>Calc: ${m.theoretical_mz.toFixed(4)}<br>Error: ${m.error.toFixed(4)}`),
-            textposition: 'none'
+            hoverinfo: 'x+y+name'
         });
     }
 
-    // Annotations for matches (labels above bars)
-    const annotations = matches.map(m => ({
-        x: m.peak_mz,
-        y: m.peak_intensity,
-        text: `${m.ion_type}<sup>${m.ion_charge}+</sup>`,
-        xanchor: 'center',
-        yanchor: 'bottom',
-        showarrow: false,
-        font: {
-            color: m.ion_type.startsWith('b') ? '#3b82f6' : '#ef4444',
-            size: 12
-        },
-        yshift: 5
-    }));
+    // Create annotations for b and y ions
+    const annotations = [];
+
+    matches.forEach(m => {
+        if (m.ion_type.startsWith('b')) {
+            annotations.push({
+                x: m.peak_mz,
+                y: m.peak_intensity,
+                text: m.ion_type,
+                showarrow: false,
+                yshift: 10,
+                font: { color: '#3b82f6', size: 12 }
+            });
+        } else if (m.ion_type.startsWith('y')) {
+            annotations.push({
+                x: m.peak_mz,
+                y: m.peak_intensity,
+                text: m.ion_type,
+                showarrow: false,
+                yshift: 10,
+                font: { color: '#ef4444', size: 12 }
+            });
+        }
+    });
 
     const layout = {
         title: {
-            text: `Spectrum Annotation: ${sequence}`,
-            font: { color: '#1f2937' }
-        },
-        paper_bgcolor: '#ffffff',
-        plot_bgcolor: '#ffffff',
-        font: {
-            family: 'Inter, sans-serif',
-            color: '#6b7280'
+            text: `Spectrum for [${sequence}]${charge}+`,
+            font: { size: 16 }
         },
         xaxis: {
             title: 'm/z',
-            gridcolor: '#e5e7eb',
-            zerolinecolor: '#e5e7eb',
-            showline: true,
-            // Explicitly set range to ensure full visibility
-            range: [getMin(xPeaks) - 10, getMax(xPeaks) + 10],
-            fixedrange: false // Allow zooming along X
+            range: [minMz - 50, maxMz + 50],
+            fixedrange: false
         },
         yaxis: {
             title: 'Intensity',
-            gridcolor: '#e5e7eb',
-            zerolinecolor: '#e5e7eb',
-            showline: true,
-            rangemode: 'tozero',
-            range: [0, getMax(yPeaks) * 1.2],
-            fixedrange: true // Lock Y axis zoom
+            range: [0, maxY * 1.2],
+            fixedrange: true
         },
         annotations: annotations,
         showlegend: true,
         legend: {
-            font: { color: '#1f2937' }
+            font: { color: '#1f2937' },
+            orientation: 'h',
+            y: 1.15
         },
-        margin: { t: 50, r: 20, l: 60, b: 50 },
+        margin: { t: 60, r: 20, l: 60, b: 50 },
         autosize: true
     };
 
@@ -779,11 +251,8 @@ function renderPlot(data, sequence) {
         responsive: true,
         displayModeBar: true,
         modeBarButtonsToRemove: ['lasso2d', 'select2d'],
-        doubleClickDelay: 1000,
+        doubleClickDelay: 1000
     };
 
     Plotly.newPlot('plot-container', traces, layout, config);
-    // document.getElementById('stats-panel').classList.remove('hidden');
 }
-
-

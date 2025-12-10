@@ -1,166 +1,193 @@
-import re
+import numpy as np
+from functools import lru_cache
+from typing import List
 
-# Standard atomic weights
+# Standard atomic weights and masses
 ATOM_MASSES = {
     "H": 1.007825035,
-    "C": 12.0000000,
-    "N": 14.0030740,
     "O": 15.9949146,
-    "S": 31.9720707,
-}
-
-# Amino acid monoisotopic masses (residue masses)
-AA_MASSES = {
-    "A": 71.03711,
-    "R": 156.10111,
-    "N": 114.04293,
-    "D": 115.02694,
-    "C": 103.00919,
-    "E": 129.04259,
-    "Q": 128.05858,
-    "G": 57.02146,
-    "H": 137.05891,
-    "I": 113.08406,
-    "L": 113.08406,
-    "K": 128.09496,
-    "M": 131.04049,
-    "F": 147.06841,
-    "P": 97.05276,
-    "S": 87.03203,
-    "T": 101.04768,
-    "W": 186.07931,
-    "Y": 163.06333,
-    "V": 99.06841,
 }
 
 PROTON_MASS = ATOM_MASSES["H"]
 H2O_MASS = 2 * ATOM_MASSES["H"] + ATOM_MASSES["O"]
 
-def parse_spectrum(spectrum_text: str):
-    """
-    Parses a string of 'mass intensity' lines into a list of dicts.
-    """
-    peaks = []
-    for line in spectrum_text.strip().splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            # Handle space or tab separation
-            parts = re.split(r'\s+', line)
-            if len(parts) >= 2:
-                mz = float(parts[0])
-                intensity = float(parts[1])
-                peaks.append({"mz": mz, "intensity": intensity})
-        except ValueError:
-            continue
-    return peaks
+# User provided masses
+AA_MASS = {'G': 57.02146374, 'A': 71.03711381, 'S': 87.03202844, 'P': 97.05276388, 'V': 99.06841395, 'T': 101.0476785, 'C': 103.0091845, 'L': 113.084064, 'I': 113.084064, 'N': 114.0429275,
+               'D': 115.0269431,
+               'Q': 128.0585775, 'K': 128.0949631, 'E': 129.0425931, 'M': 131.0404846, 'H': 137.0589119, 'F': 147.0684139, 'U': 150.9536334, 'R': 156.1011111, 'Y': 163.0633286, 'W': 186.079313,
+               'O': 237.1477269, 'n': 0.00000}
 
-def calculate_ions(sequence: str, charge: int):
+@lru_cache(maxsize=50000)
+def pep_by_ion_calc(peptide: str) -> np.ndarray:
     """
-    Calculates theoretical b and y ions for the given sequence and charge state.
-    Returns a list of ion dictionaries: { "type": "b1", "mz": 123.4, "charge": 1 }
+    Calculates b and y ions for a peptide sequence, handling [mass] or (mass) modifications.
+    Returns concatenated array of b-ions then y-ions.
     """
-    sequence = sequence.upper()
-    n_term_mass = ATOM_MASSES["H"]
-    c_term_mass = ATOM_MASSES["H"] + ATOM_MASSES["O"]
+    b_ion_vals = []
+    
+    i = 0
+    n = len(peptide)
+    pending_mod = 0.0
+    
+    while i < n:
+        char = peptide[i]
+        
+        if char in ['[', '(']:
+            # Parse modification
+            target_end = ']' if char == '[' else ')'
+            j = i + 1
+            while j < n and peptide[j] != target_end:
+                j += 1
+            
+            if j < n:
+                try:
+                    # Extract mass between delimiters
+                    mod_str = peptide[i+1:j]
+                    mod = float(mod_str)
+                    
+                    if b_ion_vals:
+                         # Modify previous residue
+                         b_ion_vals[-1] += mod
+                    else:
+                         # Modification at start (N-term)
+                         pending_mod += mod
+                except ValueError:
+                    pass
+            i = j + 1
+            
+        elif char in AA_MASS:
+            mass = AA_MASS[char]
+            if pending_mod != 0:
+                mass += pending_mod
+                pending_mod = 0
+            b_ion_vals.append(mass)
+            i += 1
+        else:
+            i += 1
+            
+    b_ions_arr = np.array(b_ion_vals)
+    if len(b_ions_arr) == 0:
+        return np.array([])
+        
+    # b1 = aa1 + H+
+    b_ions_arr[0] += PROTON_MASS
+    
+    # Cumulative sum
+    b_ions_cumulative = np.cumsum(b_ions_arr)
+    
+    total_mh = b_ions_cumulative[-1] + (18.010564684) # WATER
+    
+    # y_ions calculation matching user logic
+    y_ions = total_mh - b_ions_cumulative + PROTON_MASS
+    
+    # Override last y-ion to be total mass (y_n)
+    y_ions[-1] = total_mh
+    
+    return np.concatenate((b_ions_cumulative, y_ions), axis=0)
+
+def calculate_ions(sequence: str, charge: int) -> List[dict]:
+    """
+    Calculates theoretical ions using the robust PTM parser.
+    """
+    # 1. Parse and calculate base (singly charged) ions
+    # The result array has [b1...bn, y(n-1)...y1??]
+    # We need to identify which is which.
+    
+    # Calculate pure lengths without mods for labeling
+    # We need to know how many residues.
+    # We can run the parser again or just use the length of b_ions (half the array).
+    
+    masses = pep_by_ion_calc(sequence)
+    
+    if len(masses) == 0:
+        return []
+        
+    num_residues = len(masses) // 2
+    b_masses = masses[:num_residues]
+    y_masses = masses[num_residues:]
     
     ions = []
     
-    # Pre-calculate prefix masses for b-ions
-    # b-ion = sum(residues) + H (from N-term? No, b-ion structure is acylium usually, so let's stick to standard definition)
-    # Standard definition:
-    # b_n = sum(residue masses 1 to n) + H (if single charge protonated)
-    # Actually, b1 is usually just the residue + H? 
-    # Let's verify standard proteomics nomenclature.
-    # b_i: N-terminal fragment. Mass = sum(aa) + 1 (proton) ?
-    # y_i: C-terminal fragment. Mass = sum(aa) + H2O + 1 (proton) ?
-    #
-    # Wait, if we are doing electrospray, we have M protons total distributed.
-    # Often for theoretical generation we just generate singly charged ions, or up to the precursor charge.
-    
-    # Correct formulas for neutral masses:
-    # M_b(i) = sum(aa_1...aa_i) 
-    # M_y(i) = sum(aa_n-i+1...aa_n) + H2O
-    
-    # To get m/z for charge z:
-    # mz = (M_neutral + z * H+) / z
-    
-    prefix_mass = 0
-    total_mass = sum(AA_MASSES.get(aa, 0.0) for aa in sequence)
-    
-    for i in range(len(sequence)):
-        # 1-based index length of the fragment
-        length = i + 1
-        aa = sequence[i]
-        
-        # Add mass of current residue
-        prefix_mass += AA_MASSES.get(aa, 0.0)
-        
-        # --- b-ions ---
-        # b-ions include the N-terminus but NOT the C-terminal OH.
-        # So Neutral Mass b = prefix_mass - (if we consider cyclic structure? Standard is just sum(aa) usually treated as R-CO-...)
-        # Actually standard definition:
-        # b-ion neutral mass = sum(residue masses) 
-        # (It lacks the OH of the carboxyl group, and has the H of the N-term amine... wait.)
-        #
-        # Let's count atoms:
-        # Glycine residue: -NH-CH2-CO- (57.02)
-        # Free Glycine: NH2-CH2-COOH (75.03) -> Difference is H2O (18.01)
-        #
-        # b1 ion (Acylium): NH2-CH2-C+=O -> Mass 57.02 + 1.008 (H) = 58.03 ?? No.
-        # 
-        # Let's stick to the simplest "Roepstorff and Fohlman" nomenclature which is standard.
-        # b ions extend from N-terminus. Charge resides on N-term usually.
-        # y ions extend from C-terminus. Charge resides on C-term usually.
-        #
-        # Neutral Mass(b_i) = Sum(residues 1..i)
-        # Neutral Mass(y_j) = Sum(residues n-j+1..n) + H2O
-        #
-        # MZ = (NeutralMass + z * 1.0078) / z
-        
-        if length < len(sequence): # b-ions usually don't include the full sequence (that's precursor)
-             neutral_mass_b = prefix_mass
-             # Calculate for charges 1 up to 'charge' (precursor charge)
-             # Usually fragments are 1+ or maybe 2+ if precursor is high. 
-             # Let's generate 1+ and 2+ for now, or up to precursor charge.
-             for z in range(1, charge + 1):
-                 mz = (neutral_mass_b + z * PROTON_MASS) / z
-                 ions.append({
-                     "type": f"b{length}",
-                     "charge": z,
-                     "mz": mz,
-                     "neutral_mass": neutral_mass_b    
-                 })
+    # Generate b-ions
+    for i, m in enumerate(b_masses):
+        # b1, b2 ...
+        ion_idx = i + 1
+        for z in range(1, charge + 1):
+             # m is singly charged (MH+)
+             # m = Neutral + H
+             # mz = (Neutral + zH) / z = (m - H + zH) / z = (m + (z-1)H) / z
+             mz = (m + (z - 1) * PROTON_MASS) / z
+             ions.append({
+                 "type": f"b{ion_idx}",
+                 "charge": z,
+                 "mz": mz
+             })
 
-        # --- y-ions ---
-        # y-ions are the reverse complement
-        # We can calculate them by subtracting the prefix mass from the total mass?
-        # Total Neutral Sequence Mass (M) = Sum(all aa) + H2O
-        # Neutral Mass(y_j) where j is length from C-term
-        # y_j matches to the suffix of length j.
-        # Corresponds to removing the prefix of length (n-j).
-        # So Neutral Mass(y_j) = Total_Residu_Mass - prefix_mass(of n-j) + H2O
+    # Generate y-ions
+    # y_masses from user code:
+    # y[0] corresponds to removing b1 -> y_(n-1)
+    # y[-1] corresponds to full mass -> y_n
+    
+    # Wait, usually:
+    # y1 is suffix length 1.
+    # User code: y = M - b + H.
+    # If b=b1 (prefix 1), y = M - b1 + H = (ResTotal + H2O + H) - (Res1 + H) + H = ResSuffix + H2O + H.
+    # This is MH+ of suffix length (n-1). = y_(n-1).
+    
+    # So y_masses[0] is y_(n-1)
+    # y_masses[-1] is y_(0)? No users code set y[-1] = total. So y_n.
+    
+    # Let's map indices:
+    # i goes 0 to n-1.
+    # len = n_residues.
+    # y_index = n_residues - (i + 1) ? 
+    # No, if i=0 (b1), we get y_(n-1).
+    # If i = n-1 (bn), we get y_0? (which is usually not valid, or H2O+H)
+    
+    # User code override y[-1] = total. Total is y_n.
+    # So y_masses is [y_n-1, y_n-2, ... y_1? ... y_n?]
+    # This order is confusing.
+    
+    # Let's simple check user logic: `y_ions = total - b + H`.
+    # b is [b1, b2, ... bn]
+    # y is [y(n-1), y(n-2), ... y0]
+    
+    # So:
+    # i=0: b1 -> y(n-1)
+    # i=n-2: b(n-1) -> y1
+    # i=n-1: bn -> y0 (replaced by y_n)
+    
+    for i, m in enumerate(y_masses):
+        if i == num_residues - 1:
+            ion_label = f"y{num_residues}" # The override (Full peptide)
+        else:
+            ion_label = f"y{num_residues - 1 - i}"
+            
+        # Filter mostly y0?
+        if ion_label == "y0": continue
         
-        suffix_len = len(sequence) - length
-        if suffix_len > 0:
-             # prefix_mass currently holds sum(0..i) which is length residues.
-             # remaining residues = total - prefix
-             neutral_mass_y = (total_mass - prefix_mass) + H2O_MASS
+        for z in range(1, charge + 1):
+             mz = (m + (z - 1) * PROTON_MASS) / z
+             ions.append({
+                 "type": ion_label,
+                 "charge": z,
+                 "mz": mz
+             })
              
-             # y-ion index is usually the length of the suffix
-             y_index = suffix_len
-             
-             for z in range(1, charge + 1):
-                 mz = (neutral_mass_y + z * PROTON_MASS) / z
-                 ions.append({
-                     "type": f"y{y_index}",
-                     "charge": z,
-                     "mz": mz,
-                     "neutral_mass": neutral_mass_y
-                 })
-
     return ions
+
+def parse_spectrum(spectrum_text: str):
+    import re
+    peaks = []
+    for line in spectrum_text.strip().splitlines():
+        line = line.strip()
+        if not line: continue
+        try:
+            parts = re.split(r'\s+', line)
+            if len(parts) >= 2:
+                peaks.append({"mz": float(parts[0]), "intensity": float(parts[1])})
+        except: pass
+    return peaks
 
 def match_ions(peaks, theoretical_ions, tolerance=0.5):
     """
@@ -174,7 +201,6 @@ def match_ions(peaks, theoretical_ions, tolerance=0.5):
     for ion in theoretical_ions:
         target_mz = ion["mz"]
         
-        # Find closest peak
         best_peak = None
         min_diff = float('inf')
         
@@ -199,3 +225,4 @@ def match_ions(peaks, theoretical_ions, tolerance=0.5):
             })
             
     return matches
+

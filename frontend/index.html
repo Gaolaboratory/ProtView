@@ -13,6 +13,10 @@
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <!-- Styles -->
     <link rel="stylesheet" href="style.css">
+    <!-- ag-Grid -->
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-grid.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-theme-alpine.css">
 </head>
 
 <body>
@@ -21,37 +25,29 @@
             <div class="header">
                 <div class="title-row">
                     <h1>ProtView</h1>
-                    <button id="example-btn" class="sm-btn">Example</button>
+                    <button id="example-btn" class="sm-btn hidden">Ex</button>
                 </div>
                 <p>Peptide Spectrum Matcher</p>
             </div>
 
-            <form id="annotation-form">
+            <!-- Path Input Section -->
+            <div class="file-upload-section">
                 <div class="form-group">
-                    <label for="sequence">Peptide Sequence</label>
-                    <input type="text" id="sequence" name="sequence" placeholder="e.g. PEPTIDE" required
-                        pattern="[A-Za-z]+" title="Amino acid sequence (letters only)">
-                    <small>Standard 20 amino acids supported.</small>
+                    <label for="mzml-path">mzML File Path</label>
+                    <input type="text" id="mzml-path" placeholder="C:\Path\To\File.mzML">
                 </div>
-
                 <div class="form-group">
-                    <label for="charge">Charge State</label>
-                    <input type="number" id="charge" name="charge" value="2" min="1" max="10" required>
+                    <label for="pin-path">.pin File Path</label>
+                    <input type="text" id="pin-path" placeholder="C:\Path\To\File.pin">
                 </div>
+                <button id="read-btn" class="primary-btn">Read Local Files</button>
+            </div>
 
-                <div class="form-group">
-                    <label for="tolerance">Tolerance (Da)</label>
-                    <input type="number" id="tolerance" name="tolerance" value="0.5" step="0.01" min="0.01">
-                </div>
-
-                <div class="form-group full-height">
-                    <label for="spectrum">Mass List (mz intensity)</label>
-                    <textarea id="spectrum" name="spectrum" placeholder="Paste mass intensity list here..."
-                        required></textarea>
-                </div>
-
-                <button type="submit" id="visualize-btn">Visualize & Annotate</button>
-            </form>
+            <!-- Peptide List Section -->
+            <div class="list-section">
+                <h3>Identified Peptides</h3>
+                <div id="peptide-grid" class="ag-theme-alpine-dark" style="height: 100%; width: 100%;"></div>
+            </div>
 
             <div class="status" id="status-msg">Ready</div>
         </aside>

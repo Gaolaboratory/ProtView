@@ -243,3 +243,64 @@ button:active {
 ::-webkit-scrollbar-thumb:hover {
     background: #444;
 }
+
+/* File Upload & List Styles */
+.file-upload-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.list-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* For scrolling list */
+    margin-top: 20px;
+}
+
+.list-section h3 {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+/* ag-Grid Customization */
+.ag-theme-alpine-dark {
+    --ag-background-color: var(--bg-card);
+    --ag-header-background-color: var(--bg-panel);
+    --ag-odd-row-background-color: var(--bg-card);
+    --ag-row-hover-color: var(--accent-hover);
+    --ag-selected-row-background-color: var(--primary-light);
+    --ag-foreground-color: var(--text-primary);
+    --ag-header-foreground-color: var(--text-secondary);
+    --ag-border-color: var(--border-color);
+}
+
+
+
+/* Handsontable overrides for dark/light theme consistency */
+
+
+
+
+.peptide-item .seq {
+    font-weight: 600;
+    font-family: monospace;
+    display: block;
+}
+
+.peptide-item .meta {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.placeholder-text {
+    color: var(--text-tertiary);
+    font-size: 13px;
+    text-align: center;
+    margin-top: 20px;
+}
