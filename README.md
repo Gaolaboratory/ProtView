@@ -23,8 +23,8 @@ ProtView is an interactive web-based application for visualizing and annotating 
 
 1.  Clone the repository:
     ```bash
-    git clone https://github.com/YOUR_USERNAME/mass-spec-app.git
-    cd mass-spec-app
+    git clone https://github.com/Gaolaboratory/ProtView.git
+    cd protview
     ```
 
 2.  Install dependencies:
@@ -42,12 +42,12 @@ ProtView is an interactive web-based application for visualizing and annotating 
 
 1.  **Build the container**:
     ```bash
-    docker build -t mass-spec-app .
+    docker build -t protview .
     ```
 
 2.  **Run the container**:
     ```bash
-    docker run -p 8000:8000 mass-spec-app
+    docker run -p 8000:8000 protview
     ```
 
 3.  Access the application at `http://localhost:8000`.
@@ -59,3 +59,4 @@ ProtView is an interactive web-based application for visualizing and annotating 
 4.  **Spectrum**: Paste your mass list (m/z intensity) into the text area.
 5.  Click **Visualize & Annotate**.
 6.  **Zoom Reset**: Double-click anywhere on the plot to reset the zoom (1-second delay).
+
