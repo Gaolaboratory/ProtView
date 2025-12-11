@@ -5,3 +5,11 @@ __pycache__/
 .env
 .ipynb_checkpoints
 .DS_Store
+
+# Wasm / Rust
+wasm-pack*
+frontend/wasm/target/
+frontend/wasm/src/bin/
+*.exe
+*.zip
+*.tar.gz

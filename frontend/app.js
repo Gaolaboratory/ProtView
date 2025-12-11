@@ -1,124 +1,200 @@
+/* app.js */
+import { parsePin } from './pin_parser.js';
+
 // DOM Elements
-const readBtn = document.getElementById('read-btn');
-const mzmlPathInput = document.getElementById('mzml-path');
-const pinPathInput = document.getElementById('pin-path');
-const peptideGrid = document.getElementById('peptide-grid');
+const mzmlInput = document.getElementById('mzml-file');
+const pinInput = document.getElementById('pin-file');
+const loadBtn = document.getElementById('load-btn');
+const peptideGridEl = document.getElementById('peptide-grid');
 const plotContainer = document.getElementById('plot-container');
 const statusMsg = document.getElementById('status-msg');
 
-let gridApi = null; // ag-Grid API
+let gridApi = null;
+let currentPeptides = []; // List of peptides
+let currentMzmlFile = null;
+
+// Workers
+const mzmlWorker = new Worker('./worker_mzml.js', { type: 'module' });
+const calcWorker = new Worker('./worker_calculations.js', { type: 'module' });
+
+// Message Handlers
+mzmlWorker.onmessage = (e) => {
+    const { type, payload } = e.data;
+    if (type === 'INDEX_COMPLETE') {
+        showStatus(`Indexed ${payload.count} scans. Ready to visualize.`, 'success');
+        loadBtn.disabled = false;
+        loadBtn.textContent = "Load Files";
+
+        // Auto-verify: Load first spectrum
+        if (payload.firstScanNr) {
+            showStatus(`Indexed ${payload.count} scans. Verifying Scan ${payload.firstScanNr}...`, 'normal');
+            mzmlWorker.postMessage({ type: 'GET_SPECTRUM', payload: { scanNr: payload.firstScanNr } });
+        }
+
+    } else if (type === 'SPECTRUM_DATA') {
+        const { scanNr, spectrum } = payload;
+        // Update global state
+        currentSpectrumData = spectrum;
+
+        console.log("Spectrum received:", spectrum);
+
+        // Spectrum loaded, now calculate matches
+        // We need the current peptide info
+        const peptide = currentPeptides.find(p => p.scan_nr === scanNr);
+        if (peptide && spectrum) {
+            calcWorker.postMessage({
+                type: 'CALC_AND_MATCH',
+                payload: {
+                    sequence: peptide.sequence,
+                    charge: peptide.charge,
+                    peaks: spectrum,
+                    tolerance: 0.5
+                }
+            });
+            // Temporary render of just peaks while we wait?
+            // renderPlot({ peaks: spectrum, matches: [] }, peptide.sequence, peptide.charge);
+        } else if (spectrum) {
+            // No matching peptide found (auto-load verification case)
+            renderPlot({ peaks: spectrum, matches: [] }, `Scan ${scanNr} (Raw)`, "?");
+            showStatus(`Verification: Scan ${scanNr} loaded with ${spectrum.length} peaks.`, 'success');
+        } else {
+            showStatus("Error: Spectrum data is empty or invalid.", 'error');
+        }
+    } else if (type === 'PROGRESS') {
+        showStatus(`Indexing mzML... ${payload.percent.toFixed(0)}%`, 'normal');
+    } else if (type === 'ERROR') {
+        console.error("Worker Error:", payload);
+        showStatus("Error: " + payload, 'error');
+        loadBtn.disabled = false;
+    }
+};
+
+calcWorker.onmessage = (e) => {
+    const { type, payload } = e.data;
+    if (type === 'MATCH_RESULT') {
+        const { matches } = payload;
+        // Logic to get peaks again? 
+        // We need the peaks to render the background bars.
+        // Option A: Store current spectrum globally.
+        // Option B: Pass peaks back from worker (heavy).
+        // Let's store current spectrum in a variable when we request calc.
+        if (currentSpectrumData) {
+            renderPlot({ peaks: currentSpectrumData, matches }, currentPeptideData.sequence, currentPeptideData.charge);
+        }
+    } else if (type === 'ERROR') {
+        console.error("Calc Error:", payload);
+        showStatus("Calculation Error: " + payload, 'error');
+    }
+};
+
+// State for synchronization
+let currentSpectrumData = null;
+let currentPeptideData = null;
 
 // Event Listeners
-if (readBtn) {
-    readBtn.addEventListener('click', handleReadLocal);
-} else {
-    console.error("Read button not found");
+if (loadBtn) {
+    loadBtn.addEventListener('click', handleLoadFiles);
 }
 
-// State
-let currentData = null;
+async function handleLoadFiles() {
+    const mzmlFile = mzmlInput.files[0];
+    const pinFile = pinInput.files[0];
 
-async function handleReadLocal() {
-    console.log("Read Local Clicked");
-    const mzmlPath = mzmlPathInput.value.trim();
-    const pinPath = pinPathInput.value.trim();
-
-    if (!mzmlPath || !pinPath) {
-        showStatus("Please enter both mzML and .pin file paths.", "error");
+    if (!mzmlFile) {
+        showStatus("Please select an mzML file.", "error");
         return;
     }
 
-    // Remove quotes if user copied path as string
-    const cleanMzml = mzmlPath.replace(/^"|"$/g, '');
-    const cleanPin = pinPath.replace(/^"|"$/g, '');
+    // Disable UI
+    loadBtn.disabled = true;
+    loadBtn.textContent = "Processing...";
 
-    showStatus("Reading local files...", "normal");
-    readBtn.disabled = true;
-
-    try {
-        const response = await fetch('/api/load_local', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mzml_path: cleanMzml, pin_path: cleanPin })
-        });
-
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.detail || "Load failed");
+    // 1. Parse PIN if provided
+    if (pinFile) {
+        showStatus("Parsing peptide list...", "normal");
+        try {
+            const peptides = await parsePin(pinFile);
+            currentPeptides = peptides;
+            renderAgGrid(peptides);
+            showStatus(`Loaded ${peptides.length} peptides.`, "success");
+        } catch (err) {
+            console.error(err);
+            showStatus("Error parsing PIN: " + err.message, "error");
+            loadBtn.disabled = false;
+            return;
         }
-
-        const data = await response.json();
-        renderAgGrid(data.peptides);
-        showStatus(data.message, "success");
-
-    } catch (error) {
-        console.error(error);
-        showStatus("Error: " + error.message, "error");
-    } finally {
-        readBtn.disabled = false;
+    } else {
+        // If no PIN, maybe we just explore spectra? (Not implemented in UI yet)
+        showStatus("No PIN file selected. Please select one.", "warning");
+        loadBtn.disabled = false;
+        return;
     }
+
+    // 2. Index mzML
+    showStatus("Indexing mzML file...", "normal");
+    currentMzmlFile = mzmlFile;
+    mzmlWorker.postMessage({ type: 'INIT_FILE', payload: { file: mzmlFile } });
 }
 
 function renderAgGrid(peptides) {
-    // Clear previous grid
-    peptideGrid.innerHTML = '';
+    if (gridApi) {
+        gridApi.destroy(); // or setRowData
+    }
+    peptideGridEl.innerHTML = '';
 
     if (peptides.length === 0) {
-        peptideGrid.innerHTML = '<div class="placeholder-text">No peptides found.</div>';
+        peptideGridEl.innerHTML = '<div class="placeholder-text">No peptides found.</div>';
         return;
     }
 
     const gridOptions = {
         rowData: peptides,
         columnDefs: [
-            { field: 'sequence', headerName: 'Peptide', flex: 2, sortable: true },
+            { field: 'sequence', headerName: 'Peptide', flex: 2, sortable: true, filter: true },
             { field: 'charge', headerName: 'Chg', width: 70, sortable: true },
-            { field: 'scan_nr', headerName: 'Scan', width: 80, sortable: true },
+            { field: 'scan_nr', headerName: 'Scan', width: 80, sortable: true, filter: 'agNumberColumnFilter' },
             { field: 'spec_id', headerName: 'Spec ID', flex: 1, hide: true }
         ],
         defaultColDef: {
             resizable: true,
-            sortable: true,
-            filter: true
+            sortable: true
         },
         rowSelection: 'single',
         onRowClicked: (event) => {
             loadSpectrum(event.data);
         },
-        animateRows: false,
         headerHeight: 30,
         rowHeight: 30
-        // Removed 'theme: legacy' as it might be invalid
     };
 
-    if (typeof agGrid !== 'undefined') {
-        gridApi = agGrid.createGrid(peptideGrid, gridOptions);
-    } else {
-        showStatus("Error: ag-Grid library not loaded. Check internet connection.", "error");
-    }
+    gridApi = agGrid.createGrid(peptideGridEl, gridOptions);
 }
 
-async function loadSpectrum(peptide) {
+function loadSpectrum(peptide) {
+    currentPeptideData = peptide;
+    currentSpectrumData = null; // Clear old
     showStatus(`Loading Scan ${peptide.scan_nr}...`, "normal");
 
-    try {
-        // Fix encoding for sequences with brackets
-        const url = `/api/spectrum/${peptide.scan_nr}?sequence=${encodeURIComponent(peptide.sequence)}&charge=${peptide.charge}`;
-        const response = await fetch(url);
+    // Request spectrum from worker
+    // Worker will reply with SPECTRUM_DATA
+    // Then we trigger calcWorker
+    // Note: We need to intercept the response to store currentSpectrumData
 
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.detail || "Failed to load spectrum");
+    // To cleanly handle the async flow:
+    // We attach a one-time listener or just rely on global state.
+    // Relying on global `currentPeptideData` is fine for single-user client.
+
+    // Helper interception:
+    const tempListener = (e) => {
+        if (e.data.type === 'SPECTRUM_DATA' && e.data.payload.scanNr === peptide.scan_nr) {
+            currentSpectrumData = e.data.payload.spectrum;
+            mzmlWorker.removeEventListener('message', tempListener);
         }
+    };
+    // Actually, the main listener handles dispatch. We just need to make sure `currentSpectrumData` is set there.
+    // See `mzmlWorker.onmessage` above.
 
-        const data = await response.json();
-        renderPlot(data, peptide.sequence, peptide.charge);
-        showStatus(`Loaded Scan ${peptide.scan_nr}`, "success");
-
-    } catch (error) {
-        console.error(error);
-        showStatus("Error loading spectrum: " + error.message, "error");
-    }
+    mzmlWorker.postMessage({ type: 'GET_SPECTRUM', payload: { scanNr: peptide.scan_nr } });
 }
 
 function showStatus(msg, type) {
@@ -145,9 +221,9 @@ function renderPlot(data, sequence, charge) {
     const yPeaks = peaks.map(p => p.intensity);
     const hoverTexts = peaks.map(p => `m/z: ${p.mz.toFixed(4)}<br>Int: ${p.intensity.toFixed(1)}`);
 
-    const minMz = getMin(xPeaks);
-    const maxMz = getMax(xPeaks);
-    const maxY = getMax(yPeaks);
+    const minMz = xPeaks.length ? getMin(xPeaks) : 0;
+    const maxMz = xPeaks.length ? getMax(xPeaks) : 1000;
+    const maxY = yPeaks.length ? getMax(yPeaks) : 100;
 
     const barWidth = 0.05;
 
@@ -169,6 +245,7 @@ function renderPlot(data, sequence, charge) {
 
     const traces = [tracePeaks];
 
+    // Matches as annotations
     const bMatches = matches.filter(m => m.ion_type.startsWith('b'));
     const yMatches = matches.filter(m => m.ion_type.startsWith('y'));
 
@@ -196,29 +273,18 @@ function renderPlot(data, sequence, charge) {
         });
     }
 
-    // Create annotations for b and y ions
+    // Create annotations
     const annotations = [];
-
     matches.forEach(m => {
-        if (m.ion_type.startsWith('b')) {
-            annotations.push({
-                x: m.peak_mz,
-                y: m.peak_intensity,
-                text: m.ion_type,
-                showarrow: false,
-                yshift: 10,
-                font: { color: '#3b82f6', size: 12 }
-            });
-        } else if (m.ion_type.startsWith('y')) {
-            annotations.push({
-                x: m.peak_mz,
-                y: m.peak_intensity,
-                text: m.ion_type,
-                showarrow: false,
-                yshift: 10,
-                font: { color: '#ef4444', size: 12 }
-            });
-        }
+        const color = m.ion_type.startsWith('b') ? '#3b82f6' : '#ef4444';
+        annotations.push({
+            x: m.peak_mz,
+            y: m.peak_intensity,
+            text: m.ion_type,
+            showarrow: false,
+            yshift: 10,
+            font: { color: color, size: 12 }
+        });
     });
 
     const layout = {
@@ -255,4 +321,10 @@ function renderPlot(data, sequence, charge) {
     };
 
     Plotly.newPlot('plot-container', traces, layout, config);
+
+    // Update global currentSpectrumData helper for callback
+    if (peaks !== currentSpectrumData) currentSpectrumData = peaks;
 }
+
+// Initial Status
+showStatus("Select mzML and .pin files to start.", "normal");

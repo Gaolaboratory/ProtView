@@ -31,16 +31,18 @@
             </div>
 
             <!-- Path Input Section -->
+            <!-- File Input Section -->
             <div class="file-upload-section">
                 <div class="form-group">
-                    <label for="mzml-path">mzML File Path</label>
-                    <input type="text" id="mzml-path" placeholder="C:\Path\To\File.mzML">
+                    <label for="mzml-file">mzML File</label>
+                    <input type="file" id="mzml-file" accept=".mzML,.mzml">
                 </div>
                 <div class="form-group">
-                    <label for="pin-path">.pin File Path</label>
-                    <input type="text" id="pin-path" placeholder="C:\Path\To\File.pin">
+                    <label for="pin-file">.pin File</label>
+                    <input type="file" id="pin-file" accept=".pin,.tsv,.txt">
                 </div>
-                <button id="read-btn" class="primary-btn">Read Local Files</button>
+                <!-- Button removed or auto-trigger? Let's keep a button for explicit load -->
+                <button id="load-btn" class="primary-btn">Load Files</button>
             </div>
 
             <!-- Peptide List Section -->
@@ -63,7 +65,7 @@
         </main>
     </div>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>>
 </body>
 
 </html>
