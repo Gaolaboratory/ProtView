@@ -70,15 +70,7 @@ export function parsePin(file) {
                     // Clean peptide sequence
                     // R.ACDE.K -> ACDE
                     if (peptideSeq.includes('.')) {
-                        const parts = peptideSeq.split('.');
-                        if (parts.length >= 3) {
-                            // "R.SEQ.K" -> parts[1] is SEQ
-                            peptideSeq = parts[1];
-                        } else if (parts.length === 2) {
-                            // Unexpected format? Just take longest part?
-                            // Standard Percolator output is fl.seq.fl
-                            peptideSeq = parts.find(p => p.length > 2) || peptideSeq;
-                        }
+                        peptideSeq = peptideSeq.slice(2, -3);
                     }
 
                     // Replace brackets with parentheses
