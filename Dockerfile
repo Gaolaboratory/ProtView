@@ -18,11 +18,18 @@ COPY backend ./backend
 COPY frontend ./frontend
 
 # Create a directory for mounting external data
-RUN mkdir -p /data
-VOLUME /data
+# Use lightweight Nginx header
+FROM nginx:alpine
 
-# Expose the port
-EXPOSE 8000
+# Copy frontend files to Nginx web root
+COPY frontend /usr/share/nginx/html/frontend
+
+# Nginx config to allow wasm MIME type if needed (default usually includes it)
+# We just need to make sure we serve the root index
+# Custom config is optional, default nginx works for static files
+
+# Expose port 80
+EXPOSE 80
 
 # Command to run the application
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+

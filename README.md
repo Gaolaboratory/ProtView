@@ -1,12 +1,9 @@
 # ProtView - Mass Spectrum Annotator
-ProtView is an interactive web-based application for visualizing and annotating peptide mass spectra. It reads `.mzML` and `.pin` files to visualize identified peptides and their theoretical b- and y-ion matches.
+# Mass Spec Vue (Frontend Only)
+
+A high-performance, client-side mass spectrometry viewer powered by **Rust** and **WebAssembly**.
+
 ## Features
-- **MS File Support**: Reads `.mzML` (spectra) and `.pin` (Percolator/peptide) files directly.
-- **Interactive Visualization**: Zoom, pan, and inspect peaks using a dynamic Plotly interface with annotation sticks.
-- **Data Grid**: Efficiently browses large peptide lists (100k+ rows) using ag-Grid with filtering.
-- **Lazy Loading**: Optimized for performance by reading spectra segments on-demand.
-- **Dockerized**: specific support for mounting local data volumes.
-## Technology Stack
 - **Backend**: Python 3.9+, FastAPI, Pandas, lxml
 - **Frontend**: HTML5, CSS3, Vanilla JavaScript, Plotly.js, ag-Grid Community
 ## Getting Started (Local Development)

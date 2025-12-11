@@ -25,11 +25,7 @@ mzmlWorker.onmessage = (e) => {
         loadBtn.disabled = false;
         loadBtn.textContent = "Load Files";
 
-        // Auto-verify: Load first spectrum
-        if (payload.firstScanNr) {
-            showStatus(`Indexed ${payload.count} scans. Verifying Scan ${payload.firstScanNr}...`, 'normal');
-            mzmlWorker.postMessage({ type: 'GET_SPECTRUM', payload: { scanNr: payload.firstScanNr } });
-        }
+
 
     } else if (type === 'SPECTRUM_DATA') {
         const { scanNr, spectrum } = payload;

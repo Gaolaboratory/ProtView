@@ -20,7 +20,7 @@ self.onmessage = async function (e) {
         if (type === 'INIT_FILE') {
             fileHandle = payload.file;
             await buildIndex(fileHandle);
-            self.postMessage({ type: 'INDEX_COMPLETE', payload: { count: scanIndex.size, firstScanNr: scanIndex.keys().next().value } });
+            self.postMessage({ type: 'INDEX_COMPLETE', payload: { count: scanIndex.size } });
         }
         else if (type === 'GET_SPECTRUM') {
             const { scanNr } = payload;
@@ -101,11 +101,9 @@ async function getSpectrum(scanNr) {
         currentOffset += READ_SIZE;
     }
 
-    console.log(`[Worker] XML for Scan ${scanNr} (first 200 chars):`, spectrumXml.substring(0, 200));
-
     // Call Wasm Parser
     // Wasm expects string
     const result = parse_spectrum(spectrumXml);
-    console.log(`[Worker] Wasm returned ${result.length} peaks.`);
+    // console.log(`[Worker] Wasm returned ${result.length} peaks.`);
     return result;
 }
