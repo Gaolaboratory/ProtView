@@ -4,47 +4,57 @@
 A high-performance, client-side mass spectrometry viewer powered by **Rust** and **WebAssembly**.
 
 ## Features
-- **Backend**: Python 3.9+, FastAPI, Pandas, lxml
-- **Frontend**: HTML5, CSS3, Vanilla JavaScript, Plotly.js, ag-Grid Community
+- **Zero Server Backend**: All processing happens locally in your browser using Wasm.
+- **Visualizations**: 
+    - Interactive Spectrum Plot (Plotly.js)
+    - **Peptide Ladder**: Visual indicator of b/y ion breakage points.
+- **Controls**:
+    - Variable Tolerance (Da/ppm)
+    - Dynamic re-calculation
+- **Formats**: Supports `.mzML` (indexed) and `.pin` (Percolator) files.
+
 ## Getting Started (Local Development)
-### Prerequisites
-- Python 3.9 or higher
-- pip
-### Installation
-1.  Clone the repository:
+
+### 1. Simple HTTP Server
+Since the app is purely static files, you can run it with any static file server.
+
+**Using Python:**
+```bash
+cd frontend
+python -m http.server 8000
+```
+Then open `http://localhost:8000`.
+
+### 2. Docker
+To run the pre-built Nginx container:
+
+```bash
+docker build -t protview .
+docker run -p 8080:80 protview
+```
+Open `http://localhost:8080`.
+
+### 3. Building from Source (Wasm)
+If you want to modify the Rust code:
+
+1.  **Install Rust**: `rustup`
+2.  **Install wasm-pack**: `cargo install wasm-pack`
+3.  **Build**:
     ```bash
-    git clone https://github.com/Gaolaboratory/ProtView.git
-    cd protview
+    cd frontend/wasm
+    wasm-pack build --target web --out-dir ../pkg
     ```
-2.  Install dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
-3.  Run the application:
-    ```bash
-    uvicorn backend.main:app --reload
-    ```
-4.  Open `http://localhost:8000` in your browser.
-## Docker Usage
-To access your local `.mzML` and `.pin` files, you must **mount** the directory containing them to `/data` inside the container.
-1.  **Build the container**:
-    ```bash
-    docker build -t protview .
-    ```
-2.  **Run with volume mount**:
-   Replace `/path/to/your/data` with the actual folder path containing your MS files.
-    ```bash
-    docker run -p 8000:8000 -v /path/to/your/data:/data protview
-    ```
-3.  Access the UI at `http://localhost:8000`.
-   *   When prompted for file paths in the UI, use the container path: `/data/yourfile.mzML` and `/data/yourfile.pin`.
+
 ## Usage Guide
-1.  **Load Files**: Enter the absolute path to your `.mzML` and `.pin` files. 
-    *   *Windows Example*: `C:\Data\experiment.mzML`
-    *   *Docker Example*: `/data/experiment.mzML`
-2.  **Browse Peptides**: Use the grid on the left to scroll through identified peptides.
-3.  **Visualize**: Click any peptide row to load its spectrum and theoretical ion matches.
-4.  **Interact**:
-    *   **Zoom**: Click and drag to zoom in.
-    *   **Double-click**: Reset zoom.
-    *   **Hover**: View m/z and intensity details.
+1.  **Launch**: Open the app in your browser.
+2.  **Load Files**:
+    -   Click **Choose File** for `.mzML` (Spectra).
+    -   Click **Choose File** for `.pin` (Identifications).
+    -   Click **Load Files** to index the data.
+3.  **Settings**:
+    -   Adjust **Tolerance** (e.g., 0.1 Da or 20 ppm) to refine matching.
+4.  **Visualize**: 
+    -   Click a peptide in the list.
+    -   The **Peptide Ladder** (top) shows the sequence and matched ions (Blue=b, Red=y).
+    -   The **Spectrum Plot** (bottom) shows the peaks.
+

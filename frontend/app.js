@@ -334,7 +334,14 @@ function renderSequence(sequence, matches) {
     // Set of present ion types for O(1) lookup
     const presentIons = new Set(matches.map(m => m.ion_type));
 
-    const residues = sequence.split('');
+    // Parse sequence to extract residues (ignoring PTMs like [+42])
+    const residues = [];
+    const regex = /([A-Z])(\[[^\]]*\]|\([^)]*\))?/g;
+    let match;
+    while ((match = regex.exec(sequence)) !== null) {
+        residues.push(match[1]); // Push only the amino acid char
+    }
+
     const n = residues.length;
 
     residues.forEach((res, i) => {
