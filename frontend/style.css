@@ -104,6 +104,7 @@ label {
 }
 
 input,
+select,
 textarea {
     background-color: var(--bg-dark);
     border: 1px solid var(--border-color);
@@ -171,7 +172,6 @@ button:active {
     border: 1px solid var(--border-color);
     overflow: hidden;
     position: relative;
-    display: none;
     /* Debug: Hide plot */
 }
 

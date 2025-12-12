@@ -79,17 +79,6 @@ calcWorker.onmessage = (e) => {
 const tolValInput = document.getElementById('tolerance-val');
 const tolUnitInput = document.getElementById('tolerance-unit');
 
-// DEBUG: Render test ladder immediately
-setTimeout(() => {
-    const testSeq = "TESTPEPTIDE";
-    const testMatches = [
-        { ion_type: "b1" }, { ion_type: "y1" },
-        { ion_type: "b3" }, { ion_type: "y3" }
-    ];
-    renderSequence(testSeq, testMatches);
-    console.log("Rendered test sequence.");
-}, 1000);
-
 // State for synchronization
 let currentSpectrumData = null;
 let currentPeptideData = null;
