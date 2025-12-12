@@ -1,0 +1,14 @@
+{
+  "name": "mass-spec-wasm",
+  "version": "0.1.0",
+  "files": [
+    "mass_spec_wasm_bg.wasm",
+    "mass_spec_wasm.js",
+    "mass_spec_wasm.d.ts"
+  ],
+  "module": "mass_spec_wasm.js",
+  "types": "mass_spec_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
