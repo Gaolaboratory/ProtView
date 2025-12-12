@@ -38,15 +38,7 @@ mzmlWorker.onmessage = (e) => {
         // We need the current peptide info
         const peptide = currentPeptides.find(p => p.scan_nr === scanNr);
         if (peptide && spectrum) {
-            calcWorker.postMessage({
-                type: 'CALC_AND_MATCH',
-                payload: {
-                    sequence: peptide.sequence,
-                    charge: peptide.charge,
-                    peaks: spectrum,
-                    tolerance: 0.5
-                }
-            });
+            triggerCalculation(peptide, spectrum);
             // Temporary render of just peaks while we wait?
             // renderPlot({ peaks: spectrum, matches: [] }, peptide.sequence, peptide.charge);
         } else if (spectrum) {
@@ -84,12 +76,52 @@ calcWorker.onmessage = (e) => {
 };
 
 // State for synchronization
+const tolValInput = document.getElementById('tolerance-val');
+const tolUnitInput = document.getElementById('tolerance-unit');
+
+// DEBUG: Render test ladder immediately
+setTimeout(() => {
+    const testSeq = "TESTPEPTIDE";
+    const testMatches = [
+        { ion_type: "b1" }, { ion_type: "y1" },
+        { ion_type: "b3" }, { ion_type: "y3" }
+    ];
+    renderSequence(testSeq, testMatches);
+    console.log("Rendered test sequence.");
+}, 1000);
+
+// State for synchronization
 let currentSpectrumData = null;
 let currentPeptideData = null;
 
 // Event Listeners
 if (loadBtn) {
     loadBtn.addEventListener('click', handleLoadFiles);
+}
+if (tolValInput) tolValInput.addEventListener('change', recalcMatches);
+if (tolUnitInput) tolUnitInput.addEventListener('change', recalcMatches);
+
+function recalcMatches() {
+    if (currentSpectrumData && currentPeptideData) {
+        showStatus("Recalculating matches...", "normal");
+        triggerCalculation(currentPeptideData, currentSpectrumData);
+    }
+}
+
+function triggerCalculation(peptide, spectrum) {
+    const tol = parseFloat(tolValInput.value) || 0.1;
+    const unit = tolUnitInput.value || "Da";
+
+    calcWorker.postMessage({
+        type: 'CALC_AND_MATCH',
+        payload: {
+            sequence: peptide.sequence,
+            charge: peptide.charge,
+            peaks: spectrum,
+            tolerance: tol,
+            tolUnit: unit
+        }
+    });
 }
 
 async function handleLoadFiles() {
@@ -172,24 +204,6 @@ function loadSpectrum(peptide) {
     showStatus(`Loading Scan ${peptide.scan_nr}...`, "normal");
 
     // Request spectrum from worker
-    // Worker will reply with SPECTRUM_DATA
-    // Then we trigger calcWorker
-    // Note: We need to intercept the response to store currentSpectrumData
-
-    // To cleanly handle the async flow:
-    // We attach a one-time listener or just rely on global state.
-    // Relying on global `currentPeptideData` is fine for single-user client.
-
-    // Helper interception:
-    const tempListener = (e) => {
-        if (e.data.type === 'SPECTRUM_DATA' && e.data.payload.scanNr === peptide.scan_nr) {
-            currentSpectrumData = e.data.payload.spectrum;
-            mzmlWorker.removeEventListener('message', tempListener);
-        }
-    };
-    // Actually, the main listener handles dispatch. We just need to make sure `currentSpectrumData` is set there.
-    // See `mzmlWorker.onmessage` above.
-
     mzmlWorker.postMessage({ type: 'GET_SPECTRUM', payload: { scanNr: peptide.scan_nr } });
 }
 
@@ -208,6 +222,9 @@ function renderPlot(data, sequence, charge) {
 
     const peaks = data.peaks;
     const matches = data.matches;
+
+    // Render Sequence Visualization
+    renderSequence(sequence, matches);
 
     // Helper for min/max
     const getMin = (arr) => { let m = Infinity; for (let v of arr) if (v < m) m = v; return m; };
@@ -284,10 +301,7 @@ function renderPlot(data, sequence, charge) {
     });
 
     const layout = {
-        title: {
-            text: `Spectrum for [${sequence}]${charge}+`,
-            font: { size: 16 }
-        },
+        title: false, // Hide title, using sequence viewer instead
         xaxis: {
             title: 'm/z',
             range: [minMz - 50, maxMz + 50],
@@ -322,5 +336,48 @@ function renderPlot(data, sequence, charge) {
     if (peaks !== currentSpectrumData) currentSpectrumData = peaks;
 }
 
-// Initial Status
-showStatus("Select mzML and .pin files to start.", "normal");
+function renderSequence(sequence, matches) {
+    const container = document.getElementById('sequence-viewer');
+    if (!container) return;
+    container.classList.remove('hidden');
+    container.innerHTML = '';
+
+    // Set of present ion types for O(1) lookup
+    const presentIons = new Set(matches.map(m => m.ion_type));
+
+    const residues = sequence.split('');
+    const n = residues.length;
+
+    residues.forEach((res, i) => {
+        // Residue
+        const resDiv = document.createElement('div');
+        resDiv.className = 'seq-res';
+        resDiv.textContent = res;
+        container.appendChild(resDiv);
+
+        // Gap (if not last)
+        if (i < n - 1) {
+            const gapIdx = i + 1;
+
+            const bIon = `b${gapIdx}`;
+            const yIon = `y${n - gapIdx}`;
+
+            const hasB = presentIons.has(bIon);
+            const hasY = presentIons.has(yIon);
+
+            const gapDiv = document.createElement('div');
+            gapDiv.className = 'seq-gap';
+
+            let html = '<div class="gap-line"></div>';
+            if (hasB) html += `<div class="ion-mark b-mark">b${gapIdx}</div>`;
+            if (hasY) html += `<div class="ion-mark y-mark">y${n - gapIdx}</div>`;
+
+            gapDiv.innerHTML = html;
+
+            if (hasB) gapDiv.classList.add('match-b');
+            if (hasY) gapDiv.classList.add('match-y');
+
+            container.appendChild(gapDiv);
+        }
+    });
+}

@@ -13,7 +13,7 @@ self.onmessage = async function (e) {
         }
 
         if (type === 'CALC_AND_MATCH') {
-            const { sequence, charge, peaks, tolerance } = payload;
+            const { sequence, charge, peaks, tolerance, tolUnit = "Da" } = payload;
 
             // Wasm expects specific types.
             // calculate_ions(sequence: &str, charge: i32) -> JsValue (Array of Ion)
@@ -25,7 +25,7 @@ self.onmessage = async function (e) {
             // Our JS peaks have exactly this structure.
 
             const theoretical = calculate_ions(sequence, charge);
-            const matches = match_ions(peaks, theoretical, tolerance);
+            const matches = match_ions(peaks, theoretical, tolerance, tolUnit);
 
             self.postMessage({
                 type: 'MATCH_RESULT',

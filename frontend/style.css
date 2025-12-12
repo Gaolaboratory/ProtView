@@ -171,6 +171,8 @@ button:active {
     border: 1px solid var(--border-color);
     overflow: hidden;
     position: relative;
+    display: none;
+    /* Debug: Hide plot */
 }
 
 .placeholder-msg {
@@ -303,4 +305,102 @@ button:active {
     font-size: 13px;
     text-align: center;
     margin-top: 20px;
+}
+
+/* Settings Section */
+.settings-section {
+    padding: 15px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-section h3 {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+.form-row {
+    display: flex;
+    gap: 10px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+/* Sequence Viewer */
+.sequence-viewer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    background: transparent;
+    border: none;
+    margin-bottom: 0px;
+    /* seamless with plot */
+    overflow-x: auto;
+    flex-shrink: 0;
+    /* Prevent collapsing */
+    z-index: 10;
+    min-height: 80px;
+    /* Ensure visible height */
+}
+
+.seq-res {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    padding: 0 5px;
+    font-family: monospace;
+}
+
+.seq-gap {
+    position: relative;
+    width: 30px;
+    height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* The vertical/slanted line */
+.gap-line {
+    width: 2px;
+    height: 40px;
+    background-color: var(--border-color);
+    transform: rotate(15deg);
+    transition: background-color 0.2s;
+}
+
+/* Logic for coloring line */
+.match-b:not(.match-y) .gap-line {
+    background-color: #3b82f6;
+}
+
+.match-y:not(.match-b) .gap-line {
+    background-color: #ef4444;
+}
+
+.match-b.match-y .gap-line {
+    background: linear-gradient(to top, #ef4444 50%, #3b82f6 50%);
+}
+
+/* Ion Markers */
+.ion-mark {
+    position: absolute;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: monospace;
+}
+
+.b-mark {
+    bottom: 0px;
+    left: -4px;
+    color: #3b82f6;
+}
+
+.y-mark {
+    top: 0px;
+    right: -4px;
+    color: #ef4444;
 }

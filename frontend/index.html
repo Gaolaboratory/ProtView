@@ -32,6 +32,7 @@
 
             <!-- Path Input Section -->
             <!-- File Input Section -->
+            <!-- File Input Section -->
             <div class="file-upload-section">
                 <div class="form-group">
                     <label for="mzml-file">mzML File</label>
@@ -41,7 +42,21 @@
                     <label for="pin-file">.pin File</label>
                     <input type="file" id="pin-file" accept=".pin,.tsv,.txt">
                 </div>
-                <!-- Button removed or auto-trigger? Let's keep a button for explicit load -->
+
+                <div class="form-row" style="margin-bottom: 15px;">
+                    <div class="form-group">
+                        <label for="tolerance-val">Tolerance</label>
+                        <input type="number" id="tolerance-val" value="0.1" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="tolerance-unit">Unit</label>
+                        <select id="tolerance-unit">
+                            <option value="Da" selected>Da</option>
+                            <option value="ppm">ppm</option>
+                        </select>
+                    </div>
+                </div>
+
                 <button id="load-btn" class="primary-btn">Load Files</button>
             </div>
 
@@ -55,13 +70,12 @@
         </aside>
 
         <main class="content">
+            <div id="sequence-viewer" class="sequence-viewer hidden"></div>
             <div id="plot-container">
                 <div class="placeholder-msg">
-                    Enter peptide sequence and spectrum data to visualize.
+                    Select a peptide to visualize.
                 </div>
             </div>
-
-
         </main>
     </div>
 

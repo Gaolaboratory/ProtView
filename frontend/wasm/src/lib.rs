@@ -47,19 +47,26 @@ pub fn parse_spectrum(xml_str: &str) -> JsValue {
 }
 
 #[wasm_bindgen]
-pub fn match_ions(peaks_val: JsValue, theoretical_val: JsValue, tolerance: f64) -> JsValue {
+pub fn match_ions(peaks_val: JsValue, theoretical_val: JsValue, tolerance: f64, tol_unit: String) -> JsValue {
     let peaks: Vec<Peak> = serde_wasm_bindgen::from_value(peaks_val).unwrap();
     let theoretical: Vec<Ion> = serde_wasm_bindgen::from_value(theoretical_val).unwrap();
     
     let mut matches = Vec::new();
     
     for ion in theoretical {
+        // Calculate effective tolerance
+        let eff_tol = if tol_unit == "ppm" {
+            tolerance * ion.mz / 1_000_000.0
+        } else {
+            tolerance
+        };
+
         let mut best_peak: Option<&Peak> = None;
         let mut min_diff = f64::INFINITY;
         
         for peak in &peaks {
             let diff = (peak.mz - ion.mz).abs();
-            if diff <= tolerance && diff < min_diff {
+            if diff <= eff_tol && diff < min_diff {
                 min_diff = diff;
                 best_peak = Some(peak);
             }
